@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trace & Learn: Letters and Numbers</title>
+<style>
+  :root {
+    --sky: #dcecf7;
+    --sky-deep: #b9d8ee;
+    --mint: #d5eddc;
+    --mint-deep: #a9d9b8;
+    --peach: #fde2d2;
+    --butter: #fdf0c4;
+    --lilac: #e6defa;
+    --lilac-deep: #c9bbee;
+    --ink: #4d5a7a;
+    --ink-soft: #7b87a3;
+    --paper: #fffdf9;
+    --trail: #8fbfe0;
+    --board-bg: #f6fafd;
+    --guide: #b3c3dc;
+    --arrow: #f4b9a5;
+    --shadow: 0 6px 18px rgba(120, 140, 180, .18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --sky: #2b3a4d; --sky-deep: #3f566f; --mint: #2c4136; --mint-deep: #44654f;
+      --peach: #4a3a35; --butter: #4a4430; --lilac: #3a3550; --lilac-deep: #55507a;
+      --ink: #e4eaf6; --ink-soft: #aab4cc; --paper: #232a38; --trail: #86b8dc;
+      --board-bg: #2a3243; --guide: #6a7c99; --arrow: #f0b4a0; --shadow: 0 6px 18px rgba(0,0,0,.3);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; margin: 0; }
+  body {
+    font-family: ui-rounded, "Nunito", "Quicksand", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(180deg, var(--sky) 0%, var(--lilac) 100%);
+    background-attachment: fixed;
+    padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app { max-width: 980px; margin: 0 auto; padding: 16px; }
+  header { text-align: center; margin: 4px 0 14px; }
+  h1 { margin: 0; font-size: clamp(1.6rem, 5vw, 2.4rem); letter-spacing: .5px; }
+  .sub { margin: 4px 0 0; color: var(--ink-soft); font-size: 1.05rem; }
+
+  .tabs { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .tab, .btn {
+    font: inherit; font-weight: 700; color: var(--ink);
+    border: 3px solid transparent; border-radius: 999px;
+    padding: 10px 20px; cursor: pointer; background: var(--paper);
+    box-shadow: var(--shadow); min-height: 48px;
+    transition: transform .12s ease;
+  }
+  .tab:hover, .btn:hover { transform: translateY(-2px); }
+  .tab:active, .btn:active { transform: scale(.97); }
+  .tab[aria-pressed="true"] { background: var(--lilac-deep); border-color: var(--lilac-deep); }
+  .btn.go { background: var(--mint-deep); }
+  .btn.again { background: var(--butter); color: #5a5030; }
+  .btn.hear { background: var(--sky-deep); }
+  :focus-visible { outline: 4px solid var(--lilac-deep); outline-offset: 2px; }
+
+  .layout { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 820px) { .layout { grid-template-columns: 1.15fr .85fr; align-items: start; } }
+
+  .card { background: var(--paper); border-radius: 28px; padding: 14px; box-shadow: var(--shadow); }
+
+  .board-wrap { position: relative; }
+  canvas#board {
+    width: 100%; aspect-ratio: 1 / 1; display: block; touch-action: none;
+    background: var(--board-bg); border-radius: 22px; cursor: crosshair;
+  }
+  .meter { height: 18px; background: var(--sky); border-radius: 999px; overflow: hidden; margin: 12px 4px 4px; }
+  .meter > div { height: 100%; width: 0; background: var(--mint-deep); border-radius: 999px; transition: width .25s ease; }
+  .meter-label { font-size: .95rem; color: var(--ink-soft); margin: 0 4px; }
+
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+
+  .side { display: grid; gap: 14px; }
+  .big-pair { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 10px; background: var(--peach); border-radius: 22px; color: #5a3e38; }
+  .big-pair .glyph { font-size: clamp(3.5rem, 12vw, 5.5rem); font-weight: 800; line-height: 1; }
+  .big-pair .emoji { font-size: clamp(3rem, 10vw, 4.5rem); line-height: 1; }
+  .fact { margin: 10px 4px 0; font-size: 1.2rem; font-weight: 700; text-align: center; }
+  .fact small { display: block; font-weight: 500; color: var(--ink-soft); font-size: 1rem; margin-top: 4px; }
+  .counting { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; font-size: 1.8rem; margin-top: 8px; min-height: 2.2rem; }
+
+  .picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 8px; }
+  .pick {
+    font: inherit; font-weight: 800; font-size: 1.2rem; color: var(--ink);
+    border: 0; border-radius: 16px; min-height: 46px; cursor: pointer; background: var(--sky);
+    position: relative;
+  }
+  .pick[aria-current="true"] { background: var(--lilac-deep); }
+  .pick.done::after { content: "⭐"; position: absolute; top: -6px; right: -2px; font-size: .8rem; }
+  .stars { text-align: center; font-weight: 700; color: var(--ink-soft); margin: 0 0 8px; }
+
+  .praise {
+    position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    flex-direction: column; text-align: center; border-radius: 22px; padding: 12px;
+    background: rgba(213, 237, 220, .9); color: #3f5a49; font-size: clamp(1.6rem, 6vw, 2.4rem); font-weight: 800;
+  }
+  .praise.show { display: flex; animation: pop .35s ease; }
+  .praise span { font-size: 4rem; }
+  .praise small { font-size: 1rem; font-weight: 600; margin-top: 6px; }
+  .praise .btn { margin-top: 14px; font-size: 1.1rem; color: #3f5a49; }
+  @keyframes pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .praise.show { animation: none; } .tab, .btn { transition: none; } }
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <h1>✏️ Trace &amp; Learn</h1>
+    <p class="sub">Start at the number 1 and follow the arrows!</p>
+  </header>
+
+  <div class="tabs" role="group" aria-label="Choose what to trace">
+    <button class="tab" id="tabLetters" aria-pressed="true">🔤 Letters</button>
+    <button class="tab" id="tabNumbers" aria-pressed="false">🔢 Numbers</button>
+    <button class="tab" id="tabCase" aria-pressed="false">Aa Big / small</button>
+  </div>
+
+  <div class="layout">
+    <section class="card" aria-label="Tracing board">
+      <div class="board-wrap">
+        <canvas id="board" width="440" height="440" aria-label="Tracing area"></canvas>
+        <div class="praise" id="praise" role="status">
+          <span>🌟</span>
+          <div id="praiseText">Great job!</div>
+          <small id="praiseSmall">Getting the next one ready...</small>
+          <button class="btn go" id="nextBtn">Next now ▶</button>
+        </div>
+      </div>
+      <div class="meter" aria-hidden="true"><div id="bar"></div></div>
+      <p class="meter-label" id="meterLabel">Follow the arrows, starting at the number 1.</p>
+      <div class="controls">
+        <button class="btn" id="prevBtn">◀ Back</button>
+        <button class="btn again" id="clearBtn">🧽 Try again</button>
+        <button class="btn hear" id="hearBtn">🔊 Listen</button>
+        <button class="btn go" id="skipBtn">Next ▶</button>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card">
+        <div class="big-pair"><div class="glyph" id="glyphShow">A</div><div class="emoji" id="emojiShow">🍎</div></div>
+        <p class="fact" id="fact">A is for Apple<small id="factSmall"></small></p>
+        <div class="counting" id="counting" aria-hidden="true"></div>
+      </section>
+      <section class="card">
+        <p class="stars" id="starCount">⭐ 0 stars collected</p>
+        <div class="picker" id="picker"></div>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><path id="measure" d=""/></svg>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Learning content ----------
+  var LETTERS = [
+    ["A","Apple","🍎"],["B","Ball","⚽"],["C","Cat","🐱"],["D","Dog","🐶"],["E","Elephant","🐘"],
+    ["F","Fish","🐟"],["G","Giraffe","🦒"],["H","Hat","🎩"],["I","Ice cream","🍦"],["J","Jellyfish","🪼"],
+    ["K","Kite","🪁"],["L","Lion","🦁"],["M","Moon","🌙"],["N","Nest","🪺"],["O","Octopus","🐙"],
+    ["P","Penguin","🐧"],["Q","Queen","👑"],["R","Rainbow","🌈"],["S","Sun","☀️"],["T","Turtle","🐢"],
+    ["U","Umbrella","☂️"],["V","Violin","🎻"],["W","Whale","🐳"],["X","Xylophone","🎶"],["Y","Yo-yo","🪀"],
+    ["Z","Zebra","🦓"]
+  ];
+  var NUMBERS = [
+    ["0","Zero","🥚"],["1","One","🌞"],["2","Two","🦆"],["3","Three","🐞"],["4","Four","🍀"],
+    ["5","Five","⭐"],["6","Six","🐝"],["7","Seven","🌈"],["8","Eight","🐙"],["9","Nine","🍓"]
+  ];
+
+  // ---------- Stroke paths (each stroke is drawn in the order listed) ----------
+  // Coordinates: baseline y=100, capital top y=0, small-letter top y=40, glyph box is 70 wide.
+  var G = {
+    "A": ["M35 0 L5 100", "M35 0 L65 100", "M17 62 L53 62"],
+    "B": ["M10 0 V100", "M10 0 H38 C62 0 62 48 38 48 H10", "M10 48 H42 C70 48 70 100 42 100 H10"],
+    "C": ["M62 18 C52 2 8 -2 8 50 C8 102 52 102 62 82"],
+    "D": ["M10 0 V100", "M10 0 H30 C75 0 75 100 30 100 H10"],
+    "E": ["M10 0 V100", "M10 0 H60", "M10 50 H50", "M10 100 H60"],
+    "F": ["M10 0 V100", "M10 0 H60", "M10 50 H48"],
+    "G": ["M62 18 C52 2 8 -2 8 50 C8 102 60 104 62 62 H38"],
+    "H": ["M10 0 V100", "M60 0 V100", "M10 50 H60"],
+    "I": ["M20 0 H50", "M35 0 V100", "M20 100 H50"],
+    "J": ["M50 0 V68 C50 104 10 104 8 72"],
+    "K": ["M10 0 V100", "M60 0 L10 55", "M26 37 L62 100"],
+    "L": ["M10 0 V100 H58"],
+    "M": ["M8 100 V0 L35 60 L62 0 V100"],
+    "N": ["M10 100 V0 L60 100 V0"],
+    "O": ["M35 0 C-2 0 -2 100 35 100 C72 100 72 0 35 0"],
+    "P": ["M10 0 V100", "M10 0 H38 C68 0 68 52 38 52 H10"],
+    "Q": ["M35 0 C-2 0 -2 100 35 100 C72 100 72 0 35 0", "M42 70 L64 100"],
+    "R": ["M10 0 V100", "M10 0 H38 C68 0 68 52 38 52 H10", "M34 52 L62 100"],
+    "S": ["M58 20 C50 -2 12 -4 10 24 C8 46 58 50 60 76 C60 106 14 104 8 80"],
+    "T": ["M5 0 H65", "M35 0 V100"],
+    "U": ["M10 0 V62 C10 106 60 106 60 62 V0"],
+    "V": ["M5 0 L35 100 L65 0"],
+    "W": ["M3 0 L19 100 L35 30 L51 100 L67 0"],
+    "X": ["M8 0 L62 100", "M62 0 L8 100"],
+    "Y": ["M5 0 L35 50 L65 0", "M35 50 V100"],
+    "Z": ["M8 0 H62 L8 100 H62"],
+
+    "a": ["M50 58 C40 40 6 42 6 70 C6 98 40 100 50 82", "M50 40 V100"],
+    "b": ["M10 0 V100", "M10 60 C22 40 56 42 56 70 C56 98 22 102 10 82"],
+    "c": ["M52 52 C40 36 6 40 6 70 C6 100 40 104 52 88"],
+    "d": ["M50 58 C40 40 6 42 6 70 C6 98 40 100 50 82", "M50 0 V100"],
+    "e": ["M8 70 H52 C52 40 8 40 8 70 C8 104 42 106 52 90"],
+    "f": ["M50 14 C38 -6 22 0 22 20 V100", "M8 42 H42"],
+    "g": ["M50 58 C40 40 6 42 6 70 C6 98 40 100 50 82", "M50 40 V112 C50 138 14 138 6 118"],
+    "h": ["M10 0 V100", "M10 60 C20 40 52 40 52 62 V100"],
+    "i": ["M30 40 V100", "M30 18 L30 19"],
+    "j": ["M30 40 V112 C30 138 8 138 2 120", "M30 18 L30 19"],
+    "k": ["M10 0 V100", "M50 40 L10 72", "M24 62 L52 100"],
+    "l": ["M30 0 V100"],
+    "m": ["M6 40 V100", "M6 62 C12 40 34 40 34 62 V100", "M34 62 C40 40 62 40 62 62 V100"],
+    "n": ["M10 40 V100", "M10 62 C18 40 52 40 52 62 V100"],
+    "o": ["M30 40 C4 40 4 100 30 100 C56 100 56 40 30 40"],
+    "p": ["M10 40 V130", "M10 60 C22 40 56 42 56 70 C56 98 22 102 10 82"],
+    "q": ["M50 58 C40 40 6 42 6 70 C6 98 40 100 50 82", "M50 40 V130"],
+    "r": ["M12 40 V100", "M12 62 C18 42 38 38 50 46"],
+    "s": ["M48 52 C40 38 10 38 10 56 C10 72 48 68 48 86 C48 104 14 104 6 92"],
+    "t": ["M26 10 V92 C26 102 38 102 48 96", "M8 42 H44"],
+    "u": ["M8 40 V76 C8 106 50 106 50 76", "M50 40 V100"],
+    "v": ["M5 40 L30 100 L55 40"],
+    "w": ["M3 40 L17 100 L33 55 L49 100 L63 40"],
+    "x": ["M8 40 L52 100", "M52 40 L8 100"],
+    "y": ["M8 40 L30 100", "M52 40 L24 124 C20 134 10 134 4 128"],
+    "z": ["M8 40 H52 L8 100 H52"],
+
+    "0": ["M35 0 C5 0 5 100 35 100 C65 100 65 0 35 0"],
+    "1": ["M15 25 L38 0 V100"],
+    "2": ["M10 25 C10 -8 62 -8 62 28 C62 55 10 80 8 100 H62"],
+    "3": ["M10 10 C25 -8 60 0 56 25 C54 42 36 48 28 48 C44 48 64 56 60 76 C56 106 16 108 8 84"],
+    "4": ["M45 0 L6 68 H64", "M45 0 V100"],
+    "5": ["M58 0 H14 L10 46 C24 36 60 38 61 68 C62 102 16 106 6 84"],
+    "6": ["M52 5 C25 0 8 30 8 66 C8 106 62 106 62 70 C62 38 14 38 9 70"],
+    "7": ["M8 0 H62 L26 100"],
+    "8": ["M55 22 C55 -4 12 -4 12 22 C12 48 58 52 58 76 C58 106 10 106 10 76 C10 52 55 48 55 22"],
+    "9": ["M58 34 C58 -6 8 -6 8 32 C8 68 58 68 58 34 C58 66 54 98 20 100"]
+  };
+
+  // ---------- State ----------
+  var mode = "letters";       // "letters" | "numbers"
+  var mixedCase = false;      // letters: show capital + small
+  var idx = 0;
+  var doneSet = {};
+  try { doneSet = JSON.parse(localStorage.getItem("trace-learn-done") || "{}"); } catch (e) { doneSet = {}; }
+  function saveDone() { try { localStorage.setItem("trace-learn-done", JSON.stringify(doneSet)); } catch (e) {} }
+
+  // ---------- Elements ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var board = $("board"), ctx = board.getContext("2d");
+  var W = board.width, H = board.height;
+  var ink = document.createElement("canvas"); ink.width = W; ink.height = H; var ictx = ink.getContext("2d", { willReadFrequently: true });
+  var mask = document.createElement("canvas"); mask.width = W; mask.height = H; var mctx = mask.getContext("2d", { willReadFrequently: true });
+  var allowed = document.createElement("canvas"); allowed.width = W; allowed.height = H; var actx = allowed.getContext("2d", { willReadFrequently: true });
+  var measure = $("measure");
+
+  var BRUSH = 30, BAND = 26, GUIDE_W = 34, ALLOW_W = 62;
+  var drawing = false, last = null, finished = false, glyphData = null, allowedData = null, maskCount = 0;
+  var strokes = [], L = { scale: 3.2, tx: 108, ty: 60 };
+  var advanceTimer = null;
+
+  function list() { return mode === "letters" ? LETTERS : NUMBERS; }
+  function current() { return list()[idx]; }
+  function shownChar() {
+    var c = current()[0];
+    return (mode === "letters" && mixedCase) ? c + c.toLowerCase() : c;
+  }
+
+  // ---------- Build strokes, masks and arrows ----------
+  function buildStrokes() {
+    var text = shownChar().split("");
+    strokes = [];
+    if (text.length > 1) { L = { scale: 2.7, tx: 17, ty: 30 }; }
+    else { L = { scale: 3.2, tx: (W - 70 * 3.2) / 2, ty: 60 }; }
+    text.forEach(function (ch, gi) {
+      var ox = gi * 80;
+      (G[ch] || []).forEach(function (d, si) {
+        measure.setAttribute("d", d);
+        var len = measure.getTotalLength();
+        function at(s) {
+          var p = measure.getPointAtLength(Math.max(0, Math.min(len, s)));
+          return { x: L.tx + (ox + p.x) * L.scale, y: L.ty + p.y * L.scale };
+        }
+        var start = at(0);
+        var arrows = [];
+        var fr = len > 90 ? [0.35, 0.7] : (len > 25 ? [0.6] : []);
+        fr.forEach(function (f) {
+          var s = len * f, p = at(s), a = at(s - 2), b = at(s + 2);
+          arrows.push({ x: p.x, y: p.y, ang: Math.atan2(b.y - a.y, b.x - a.x) });
+        });
+        strokes.push({ d: d, ox: ox, n: si + 1, path: new Path2D(d), start: start, arrows: arrows });
+      });
+    });
+  }
+
+  function strokeAll(c, widthPx) {
+    c.lineCap = "round"; c.lineJoin = "round";
+    strokes.forEach(function (s) {
+      c.setTransform(L.scale, 0, 0, L.scale, L.tx + s.ox * L.scale, L.ty);
+      c.lineWidth = widthPx / L.scale;
+      c.stroke(s.path);
+    });
+    c.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  function buildMasks() {
+    buildStrokes();
+    mctx.clearRect(0, 0, W, H); mctx.strokeStyle = "#000"; strokeAll(mctx, BAND);
+    actx.clearRect(0, 0, W, H); actx.strokeStyle = "#000"; strokeAll(actx, ALLOW_W);
+    glyphData = mctx.getImageData(0, 0, W, H).data;
+    allowedData = actx.getImageData(0, 0, W, H).data;
+    maskCount = 0;
+    for (var i = 3; i < glyphData.length; i += 4) if (glyphData[i] > 100) maskCount++;
+  }
+
+  function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+    // soft path to follow
+    ctx.globalAlpha = .55; ctx.strokeStyle = css("--sky-deep"); strokeAll(ctx, GUIDE_W);
+    ctx.globalAlpha = 1;
+    // dotted centre line
+    ctx.strokeStyle = css("--guide");
+    strokes.forEach(function (s) {
+      ctx.setTransform(L.scale, 0, 0, L.scale, L.tx + s.ox * L.scale, L.ty);
+      ctx.lineCap = "round"; ctx.lineWidth = 4 / L.scale; ctx.setLineDash([0.1, 12 / L.scale]);
+      ctx.stroke(s.path);
+    });
+    ctx.setLineDash([]); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // the child's trail
+    ctx.drawImage(ink, 0, 0);
+    // arrows and start numbers sit on top so they stay visible
+    var arrow = css("--arrow");
+    ctx.globalAlpha = .95;
+    strokes.forEach(function (s) {
+      s.arrows.forEach(function (a) {
+        ctx.save(); ctx.translate(a.x, a.y); ctx.rotate(a.ang);
+        ctx.fillStyle = arrow; ctx.beginPath();
+        ctx.moveTo(11, 0); ctx.lineTo(-7, -9); ctx.lineTo(-3, 0); ctx.lineTo(-7, 9); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      });
+    });
+    strokes.forEach(function (s) {
+      ctx.fillStyle = arrow; ctx.beginPath(); ctx.arc(s.start.x, s.start.y, 15, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#5a3e38"; ctx.font = "800 17px ui-rounded, 'Trebuchet MS', Arial, sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(s.n), s.start.x, s.start.y + 1);
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------- Scoring ----------
+  function score() {
+    var d = ictx.getImageData(0, 0, W, H).data;
+    var covered = 0, inkTotal = 0, outside = 0;
+    for (var i = 3; i < d.length; i += 4) {
+      if (d[i] > 100) {
+        inkTotal++;
+        if (glyphData[i] > 100) covered++;
+        if (allowedData[i] <= 100) outside++;
+      }
+    }
+    return { coverage: maskCount ? covered / maskCount : 0, messy: inkTotal ? outside / inkTotal : 0 };
+  }
+
+  function updateMeter(final) {
+    var s = score();
+    $("bar").style.width = Math.min(100, Math.round(s.coverage / 0.8 * 100)) + "%";
+    if (s.coverage < 0.15) $("meterLabel").textContent = "Follow the arrows, starting at the number 1.";
+    else if (s.coverage < 0.8) $("meterLabel").textContent = "Keep going, you are doing great!";
+    else $("meterLabel").textContent = "Almost done!";
+    if (final && !finished) {
+      if (s.coverage >= 0.8 && s.messy <= 0.35) celebrate();
+      else if (s.coverage >= 0.8) $("meterLabel").textContent = "Nice! Try to stay on the path. Press “Try again” to practice.";
+    }
+  }
+
+  // ---------- Pointer handling ----------
+  function pos(e) {
+    var r = board.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height };
+  }
+  function stroke(a, b) {
+    ictx.strokeStyle = css("--trail");
+    ictx.lineWidth = BRUSH; ictx.lineCap = "round"; ictx.lineJoin = "round";
+    ictx.beginPath(); ictx.moveTo(a.x, a.y); ictx.lineTo(b.x, b.y); ictx.stroke();
+  }
+  board.addEventListener("pointerdown", function (e) {
+    if (finished) return;
+    e.preventDefault(); board.setPointerCapture(e.pointerId);
+    drawing = true; last = pos(e); stroke(last, last); render();
+  });
+  board.addEventListener("pointermove", function (e) {
+    if (!drawing) return;
+    var p = pos(e); stroke(last, p); last = p; render(); updateMeter(false);
+  });
+  function end() { if (!drawing) return; drawing = false; updateMeter(true); }
+  board.addEventListener("pointerup", end);
+  board.addEventListener("pointercancel", end);
+
+  // ---------- Speech ----------
+  function say(text) {
+    try {
+      if (!("speechSynthesis" in window)) return;
+      speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = .85; u.pitch = 1.15; speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  function sentence() {
+    var it = current();
+    return mode === "letters" ? it[0] + " is for " + it[1] : it[1] + ". The number " + it[0] + ".";
+  }
+
+  // ---------- Celebrate, then move on to the next one ----------
+  var praises = ["Great job!", "Wonderful!", "You did it!", "Super tracing!", "Amazing!"];
+  function celebrate() {
+    finished = true;
+    doneSet[mode + ":" + current()[0]] = true; saveDone();
+    $("bar").style.width = "100%";
+    var isLast = idx === list().length - 1;
+    $("praiseText").textContent = isLast ? "You traced them all! 🎉" : praises[Math.floor(Math.random() * praises.length)];
+    $("praiseSmall").textContent = isLast ? "Let's start again from the beginning." : "Getting the next one ready...";
+    $("praise").classList.add("show");
+    say((isLast ? "You traced them all! " : "Great job! ") + sentence());
+    renderPicker();
+    clearTimeout(advanceTimer);
+    advanceTimer = setTimeout(function () { go(idx + 1); }, 2600);
+  }
+
+  // ---------- UI ----------
+  function renderInfo() {
+    var it = current();
+    $("glyphShow").textContent = shownChar();
+    $("emojiShow").textContent = it[2];
+    var cnt = $("counting"); cnt.textContent = "";
+    if (mode === "letters") {
+      $("fact").firstChild.nodeValue = it[0] + " is for " + it[1];
+      $("factSmall").textContent = "Say it out loud: “" + it[1] + "”";
+    } else {
+      var n = parseInt(it[0], 10);
+      $("fact").firstChild.nodeValue = it[0] + " is " + it[1];
+      $("factSmall").textContent = n === 0 ? "Zero means none. Nothing to count!" : "Count them: " + (n === 1 ? "1 thing!" : n + " things!");
+      for (var i = 0; i < n; i++) { var s = document.createElement("span"); s.textContent = it[2]; cnt.appendChild(s); }
+    }
+  }
+
+  function renderPicker() {
+    var p = $("picker"); p.textContent = "";
+    var count = 0;
+    list().forEach(function (it, i) {
+      var b = document.createElement("button");
+      b.className = "pick" + (doneSet[mode + ":" + it[0]] ? " done" : "");
+      b.textContent = it[0]; b.setAttribute("aria-label", "Trace " + it[0]);
+      if (i === idx) b.setAttribute("aria-current", "true");
+      b.addEventListener("click", function () { go(i); });
+      p.appendChild(b);
+      if (doneSet[mode + ":" + it[0]]) count++;
+    });
+    $("starCount").textContent = "⭐ " + count + " of " + list().length + " stars collected";
+  }
+
+  function resetBoard() {
+    clearTimeout(advanceTimer);
+    finished = false; drawing = false; ictx.clearRect(0, 0, W, H);
+    $("praise").classList.remove("show");
+    $("bar").style.width = "0"; $("meterLabel").textContent = "Follow the arrows, starting at the number 1.";
+    buildMasks(); render();
+  }
+
+  function go(i) {
+    var n = list().length;
+    idx = (i + n) % n;
+    renderInfo(); renderPicker(); resetBoard();
+  }
+
+  function setMode(m) {
+    mode = m; idx = 0;
+    $("tabLetters").setAttribute("aria-pressed", m === "letters");
+    $("tabNumbers").setAttribute("aria-pressed", m === "numbers");
+    $("tabCase").style.display = m === "letters" ? "" : "none";
+    go(0);
+  }
+
+  $("tabLetters").addEventListener("click", function () { setMode("letters"); });
+  $("tabNumbers").addEventListener("click", function () { setMode("numbers"); });
+  $("tabCase").addEventListener("click", function () {
+    mixedCase = !mixedCase; $("tabCase").setAttribute("aria-pressed", mixedCase); go(idx);
+  });
+  $("prevBtn").addEventListener("click", function () { go(idx - 1); });
+  $("skipBtn").addEventListener("click", function () { go(idx + 1); });
+  $("nextBtn").addEventListener("click", function () { go(idx + 1); });
+  $("clearBtn").addEventListener("click", resetBoard);
+  $("hearBtn").addEventListener("click", function () { say(sentence()); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowRight") go(idx + 1);
+    if (e.key === "ArrowLeft") go(idx - 1);
+  });
+
+  if (window.matchMedia) {
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    if (mq.addEventListener) mq.addEventListener("change", function () { render(); });
+  }
+
+  setMode("letters");
+})();
+</script>
+</body>
+</html>
